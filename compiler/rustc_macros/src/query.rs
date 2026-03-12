@@ -144,6 +144,7 @@ struct QueryModifiers {
     arena_cache: Option<Ident>,
     cache_on_disk_if: Option<CacheOnDiskIf>,
     cycle_delay_bug: Option<Ident>,
+    cycle_stash: Option<Ident>,
     depth_limit: Option<Ident>,
     desc: Desc,
     eval_always: Option<Ident>,
@@ -158,6 +159,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut cache_on_disk_if = None;
     let mut desc = None;
     let mut cycle_delay_bug = None;
+    let mut cycle_stash = None;
     let mut no_hash = None;
     let mut anon = None;
     let mut eval_always = None;
@@ -193,6 +195,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(arena_cache = modifier);
         } else if modifier == "cycle_delay_bug" {
             try_insert!(cycle_delay_bug = modifier);
+        } else if modifier == "cycle_stash" {
+            try_insert!(cycle_stash = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
         } else if modifier == "anon" {
@@ -217,6 +221,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         cache_on_disk_if,
         desc,
         cycle_delay_bug,
+        cycle_stash,
         no_hash,
         anon,
         eval_always,
@@ -252,6 +257,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         arena_cache,
         cache_on_disk_if,
         cycle_delay_bug,
+        cycle_stash,
         depth_limit,
         desc: _,
         eval_always,
@@ -267,6 +273,8 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
 
     let cycle_error_handling = if cycle_delay_bug.is_some() {
         quote! { DelayBug }
+    } else if cycle_stash.is_some() {
+        quote! { Stash }
     } else {
         quote! { Error }
     };
@@ -403,6 +411,7 @@ fn add_to_analyzer_stream(query: &Query, analyzer_stream: &mut proc_macro2::Toke
     doc_link!(
         arena_cache,
         cycle_delay_bug,
+        cycle_stash,
         no_hash,
         anon,
         eval_always,

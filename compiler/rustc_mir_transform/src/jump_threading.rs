@@ -161,7 +161,7 @@ struct TOFinder<'a, 'tcx> {
 }
 
 rustc_index::newtype_index! {
-    #[orderable]
+    #[derive(Ord, PartialOrd)]
     #[debug_format = "_c{}"]
     struct ConditionIndex {}
 }

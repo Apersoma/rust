@@ -2006,7 +2006,6 @@ symbols! {
         test_2018_feature,
         test_accepted_feature,
         test_case,
-        test_incomplete_feature,
         test_removed_feature,
         test_runner,
         test_unstable_lint,

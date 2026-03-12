@@ -13,7 +13,7 @@ use super::{ConstValue, SourceInfo};
 use crate::ty::{self, CoroutineArgsExt, Ty};
 
 rustc_index::newtype_index! {
-    #[stable_hash]
+    #[derive(HashStable)]
     #[encodable]
     #[debug_format = "_s{}"]
     pub struct CoroutineSavedLocal {}

@@ -1,4 +1,4 @@
-// This is marked as `test = true` and hence picked up by `./x miri`, but that would be too slow.
+// Disabling in Miri as these would take too long.
 #![cfg(not(miri))]
 #![feature(iter_next_chunk)]
 #![feature(repr_simd)]

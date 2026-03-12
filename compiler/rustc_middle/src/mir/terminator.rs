@@ -326,42 +326,36 @@ impl<O> AssertKind<O> {
             }
         }
     }
-}
 
-/// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
-///
-/// Needs to be kept in sync with the run-time behavior (which is defined by
-/// `AssertKind::panic_function` and the lang items mentioned in its docs).
-/// Note that we deliberately show more details here than we do at runtime, such as the actual
-/// numbers that overflowed -- it is much easier to do so here than at runtime.
-impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    /// Format the diagnostic message for use in a lint (e.g. when the assertion fails during const-eval).
+    ///
+    /// Needs to be kept in sync with the run-time behavior (which is defined by
+    /// `AssertKind::panic_function` and the lang items mentioned in its docs).
+    /// Note that we deliberately show more details here than we do at runtime, such as the actual
+    /// numbers that overflowed -- it is much easier to do so here than at runtime.
+    pub fn diagnostic_message(&self) -> DiagMessage {
         use AssertKind::*;
 
         match self {
-            BoundsCheck { len, index } => {
-                write!(f, "index out of bounds: the length is {len:?} but the index is {index:?}")
+            BoundsCheck { .. } => {
+                msg!("index out of bounds: the length is {$len} but the index is {$index}")
             }
-            Overflow(BinOp::Shl, _, val) => {
-                write!(f, "attempt to shift left by `{val:#?}`, which would overflow")
+            Overflow(BinOp::Shl, _, _) => {
+                msg!("attempt to shift left by `{$val}`, which would overflow")
             }
-            Overflow(BinOp::Shr, _, val) => {
-                write!(f, "attempt to shift right by `{val:#?}`, which would overflow")
+            Overflow(BinOp::Shr, _, _) => {
+                msg!("attempt to shift right by `{$val}`, which would overflow")
             }
-            Overflow(binop, left, right) => {
-                write!(
-                    f,
-                    "attempt to compute `{left:#?} {op} {right:#?}`, which would overflow",
-                    op = binop.to_hir_binop().as_str()
-                )
+            Overflow(_, _, _) => {
+                msg!("attempt to compute `{$left} {$op} {$right}`, which would overflow")
             }
-            OverflowNeg(val) => write!(f, "attempt to negate `{val:#?}`, which would overflow"),
-            DivisionByZero(val) => write!(f, "attempt to divide `{val:#?}` by zero"),
-            RemainderByZero(val) => {
-                write!(f, "attempt to calculate the remainder of `{val:#?}` with a divisor of zero")
+            OverflowNeg(_) => msg!("attempt to negate `{$val}`, which would overflow"),
+            DivisionByZero(_) => msg!("attempt to divide `{$val}` by zero"),
+            RemainderByZero(_) => {
+                msg!("attempt to calculate the remainder of `{$val}` with a divisor of zero")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                write!(f, "`async fn` resumed after completion")
+                msg!("`async fn` resumed after completion")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
@@ -370,41 +364,82 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
                 bug!("gen blocks can be resumed after they return and will keep returning `None`")
             }
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
-                write!(f, "coroutine resumed after completion")
+                msg!("coroutine resumed after completion")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                write!(f, "`async fn` resumed after panicking")
+                msg!("`async fn` resumed after panicking")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                write!(f, "`gen` fn or block cannot be further iterated on after it panicked")
+                msg!("`gen` fn or block cannot be further iterated on after it panicked")
             }
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
-                write!(f, "coroutine resumed after panicking")
+                msg!("coroutine resumed after panicking")
             }
-            NullPointerDereference => write!(f, "null pointer dereference occurred"),
-            InvalidEnumConstruction(source) => {
-                write!(f, "trying to construct an enum from an invalid value `{source:#?}`")
+            NullPointerDereference => msg!("null pointer dereference occurred"),
+            InvalidEnumConstruction(_) => {
+                msg!("trying to construct an enum from an invalid value `{$source}`")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                write!(f, "`async fn` resumed after async drop")
+                msg!("`async fn` resumed after async drop")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
-                write!(f, "`gen` fn or block cannot be further iterated on after it async dropped")
+                msg!("`gen` fn or block cannot be further iterated on after it async dropped")
             }
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => {
-                write!(f, "coroutine resumed after async drop")
+                msg!("coroutine resumed after async drop")
             }
 
-            MisalignedPointerDereference { required, found } => write!(
-                f,
-                "misaligned pointer dereference: address must be a multiple of {required:#?} but is {found:#?}"
+            MisalignedPointerDereference { .. } => msg!(
+                "misaligned pointer dereference: address must be a multiple of {$required} but is {$found}"
             ),
+        }
+    }
+
+    pub fn add_args(self, adder: &mut dyn FnMut(DiagArgName, DiagArgValue))
+    where
+        O: fmt::Debug,
+    {
+        use AssertKind::*;
+
+        macro_rules! add {
+            ($name: expr, $value: expr) => {
+                adder($name.into(), $value.into_diag_arg(&mut None));
+            };
+        }
+
+        match self {
+            BoundsCheck { len, index } => {
+                add!("len", format!("{len:?}"));
+                add!("index", format!("{index:?}"));
+            }
+            Overflow(BinOp::Shl | BinOp::Shr, _, val)
+            | DivisionByZero(val)
+            | RemainderByZero(val)
+            | OverflowNeg(val) => {
+                add!("val", format!("{val:#?}"));
+            }
+            Overflow(binop, left, right) => {
+                add!("op", binop.to_hir_binop().as_str());
+                add!("left", format!("{left:#?}"));
+                add!("right", format!("{right:#?}"));
+            }
+            ResumedAfterReturn(_)
+            | ResumedAfterPanic(_)
+            | NullPointerDereference
+            | ResumedAfterDrop(_) => {}
+            MisalignedPointerDereference { required, found } => {
+                add!("required", format!("{required:#?}"));
+                add!("found", format!("{found:#?}"));
+            }
+            InvalidEnumConstruction(source) => {
+                add!("source", format!("{source:#?}"));
+            }
         }
     }
 }
@@ -475,6 +510,7 @@ impl<'tcx> TerminatorKind<'tcx> {
 }
 
 pub use helper::*;
+use rustc_errors::msg;
 
 mod helper {
     use super::*;

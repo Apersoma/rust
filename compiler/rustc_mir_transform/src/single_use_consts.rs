@@ -5,8 +5,6 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-use crate::strip_debuginfo::drop_invalid_debuginfos;
-
 /// Various parts of MIR building introduce temporaries that are commonly not needed.
 ///
 /// Notably, `if CONST` and `match CONST` end up being used-once temporaries, which
@@ -84,8 +82,6 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
                 );
             }
         }
-
-        drop_invalid_debuginfos(body);
     }
 
     fn is_required(&self) -> bool {

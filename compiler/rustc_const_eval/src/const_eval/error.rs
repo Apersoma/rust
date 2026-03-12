@@ -1,17 +1,15 @@
-use std::{fmt, mem};
+use std::mem;
 
-use rustc_errors::Diag;
+use rustc_errors::{Diag, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg};
 use rustc_middle::mir::AssertKind;
-use rustc_middle::mir::interpret::{
-    AllocId, Provenance, ReportedErrorInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
-};
+use rustc_middle::mir::interpret::{AllocId, Provenance, ReportedErrorInfo, UndefinedBehaviorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::ConstInt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_span::{Span, Symbol};
 
 use super::CompileTimeMachine;
-use crate::errors::{self, FrameNote};
+use crate::errors::{self, FrameNote, ReportErrorExt};
 use crate::interpret::{
     CtfeProvenance, ErrorHandled, Frame, InterpCx, InterpErrorInfo, InterpErrorKind,
     MachineStopType, Pointer, err_inval, err_machine_stop,
@@ -42,48 +40,64 @@ pub enum ConstEvalErrKind {
     ConstMakeGlobalWithOffset(Pointer<Option<CtfeProvenance>>),
 }
 
-impl fmt::Display for ConstEvalErrKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl MachineStopType for ConstEvalErrKind {
+    fn diagnostic_message(&self) -> DiagMessage {
         use ConstEvalErrKind::*;
+        use rustc_errors::msg;
+
         match self {
-            ConstAccessesMutGlobal => write!(f, "constant accesses mutable global memory"),
+            ConstAccessesMutGlobal => "constant accesses mutable global memory".into(),
             ModifiedGlobal => {
-                write!(f, "modifying a static's initial value from another static's initializer")
+                "modifying a static's initial value from another static's initializer".into()
             }
-            Panic { msg, .. } => write!(f, "evaluation panicked: {msg}"),
+            Panic { .. } => msg!("evaluation panicked: {$msg}"),
             RecursiveStatic => {
-                write!(f, "encountered static that tried to access itself during initialization")
+                "encountered static that tried to access itself during initialization".into()
             }
-            AssertFailure(x) => write!(f, "{x}"),
+            AssertFailure(x) => x.diagnostic_message(),
             WriteThroughImmutablePointer => {
-                write!(
-                    f,
+                msg!(
                     "writing through a pointer that was derived from a shared (immutable) reference"
                 )
             }
+            ConstMakeGlobalPtrAlreadyMadeGlobal { .. } => {
+                msg!("attempting to call `const_make_global` twice on the same allocation {$alloc}")
+            }
+            ConstMakeGlobalPtrIsNonHeap(_) => {
+                msg!(
+                    "pointer passed to `const_make_global` does not point to a heap allocation: {$ptr}"
+                )
+            }
+            ConstMakeGlobalWithDanglingPtr(_) => {
+                msg!("pointer passed to `const_make_global` is dangling: {$ptr}")
+            }
+            ConstMakeGlobalWithOffset(_) => {
+                msg!("making {$ptr} global which does not point to the beginning of an object")
+            }
+        }
+    }
+    fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagArgName, DiagArgValue)) {
+        use ConstEvalErrKind::*;
+        match *self {
+            RecursiveStatic
+            | ConstAccessesMutGlobal
+            | ModifiedGlobal
+            | WriteThroughImmutablePointer => {}
+            AssertFailure(kind) => kind.add_args(adder),
+            Panic { msg, .. } => {
+                adder("msg".into(), msg.into_diag_arg(&mut None));
+            }
+            ConstMakeGlobalPtrIsNonHeap(ptr)
+            | ConstMakeGlobalWithOffset(ptr)
+            | ConstMakeGlobalWithDanglingPtr(ptr) => {
+                adder("ptr".into(), format!("{ptr:?}").into_diag_arg(&mut None));
+            }
             ConstMakeGlobalPtrAlreadyMadeGlobal(alloc) => {
-                write!(
-                    f,
-                    "attempting to call `const_make_global` twice on the same allocation {alloc}"
-                )
-            }
-            ConstMakeGlobalPtrIsNonHeap(ptr) => {
-                write!(
-                    f,
-                    "pointer passed to `const_make_global` does not point to a heap allocation: {ptr}"
-                )
-            }
-            ConstMakeGlobalWithDanglingPtr(ptr) => {
-                write!(f, "pointer passed to `const_make_global` is dangling: {ptr}")
-            }
-            ConstMakeGlobalWithOffset(ptr) => {
-                write!(f, "making {ptr} global which does not point to the beginning of an object")
+                adder("alloc".into(), alloc.into_diag_arg(&mut None));
             }
         }
     }
 }
-
-impl MachineStopType for ConstEvalErrKind {}
 
 /// The errors become [`InterpErrorKind::MachineStop`] when being raised.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
@@ -193,20 +207,14 @@ where
         _ => {
             let (our_span, frames) = get_span_and_frames();
             let span = span.substitute_dummy(our_span);
-            let mut err = tcx.dcx().struct_span_err(our_span, error.to_string());
-            if matches!(
+            let mut err = tcx.dcx().struct_span_err(our_span, error.diagnostic_message());
+            // We allow invalid programs in infallible promoteds since invalid layouts can occur
+            // anyway (e.g. due to size overflow). And we allow OOM as that can happen any time.
+            let allowed_in_infallible = matches!(
                 error,
-                InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ValidationError {
-                    ptr_bytes_warning: true,
-                    ..
-                }) | InterpErrorKind::Unsupported(
-                    UnsupportedOpInfo::ReadPointerAsInt(..)
-                        | UnsupportedOpInfo::ReadPartialPointer(..)
-                )
-            ) {
-                err.help("this code performed an operation that depends on the underlying bytes representing a pointer");
-                err.help("the absolute address of a pointer is not known at compile-time, so such operations are not supported");
-            }
+                InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
+            );
+
             if let InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(
                 Some((alloc_id, _access)),
             )) = error
@@ -221,12 +229,7 @@ where
                 err.subdiagnostic(raw_bytes);
             }
 
-            // We allow invalid programs in infallible promoteds since invalid layouts can occur
-            // anyway (e.g. due to size overflow). And we allow OOM as that can happen any time.
-            let allowed_in_infallible = matches!(
-                error,
-                InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
-            );
+            error.add_args(&mut err);
 
             mk(&mut err, span, frames);
             let g = err.emit();

@@ -341,13 +341,13 @@ impl AllocError {
 }
 
 /// The information that makes up a memory access: offset and size.
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct AllocRange {
     pub start: Size,
     pub size: Size,
 }
 
-impl fmt::Display for AllocRange {
+impl fmt::Debug for AllocRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{:#x}..{:#x}]", self.start.bytes(), self.end().bytes())
     }

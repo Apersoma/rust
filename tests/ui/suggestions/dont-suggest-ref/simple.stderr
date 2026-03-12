@@ -4,7 +4,8 @@ error[E0507]: cannot move out of `s` which is behind a shared reference
 LL |     let X(_t) = *s;
    |           --    ^^
    |           |
-   |           data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |           data moved here
+   |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -18,7 +19,8 @@ error[E0507]: cannot move out of `r` as enum variant `One` which is behind a sha
 LL |     if let Either::One(_t) = *r { }
    |                        --    ^^
    |                        |
-   |                        data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                        data moved here
+   |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -32,7 +34,8 @@ error[E0507]: cannot move out of `r` as enum variant `One` which is behind a sha
 LL |     while let Either::One(_t) = *r { }
    |                           --    ^^
    |                           |
-   |                           data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                           data moved here
+   |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -47,7 +50,10 @@ LL |     match *r {
    |           ^^
 ...
 LL |         Either::One(_t)
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -62,7 +68,10 @@ LL |     match *r {
    |           ^^
 ...
 LL |         Either::One(_t) => (),
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -76,7 +85,8 @@ error[E0507]: cannot move out of `sm` which is behind a mutable reference
 LL |     let X(_t) = *sm;
    |           --    ^^^
    |           |
-   |           data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |           data moved here
+   |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -90,7 +100,8 @@ error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mu
 LL |     if let Either::One(_t) = *rm { }
    |                        --    ^^^
    |                        |
-   |                        data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                        data moved here
+   |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -104,7 +115,8 @@ error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mu
 LL |     while let Either::One(_t) = *rm { }
    |                           --    ^^^
    |                           |
-   |                           data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                           data moved here
+   |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -119,7 +131,10 @@ LL |     match *rm {
    |           ^^^
 ...
 LL |         Either::One(_t)
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -134,7 +149,10 @@ LL |     match *rm {
    |           ^^^
 ...
 LL |         Either::One(_t) => (),
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -149,7 +167,10 @@ LL |     match *rm {
    |           ^^^
 ...
 LL |         Either::One(_t) => (),
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the dereference here
    |
@@ -163,7 +184,8 @@ error[E0507]: cannot move out of index of `Vec<X>`
 LL |     let X(_t) = vs[0];
    |           --    ^^^^^
    |           |
-   |           data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |           data moved here
+   |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -176,7 +198,8 @@ error[E0507]: cannot move out of index of `Vec<Either>`
 LL |     if let Either::One(_t) = vr[0] { }
    |                        --    ^^^^^
    |                        |
-   |                        data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                        data moved here
+   |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -189,7 +212,8 @@ error[E0507]: cannot move out of index of `Vec<Either>`
 LL |     while let Either::One(_t) = vr[0] { }
    |                           --    ^^^^^
    |                           |
-   |                           data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                           data moved here
+   |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -203,7 +227,10 @@ LL |     match vr[0] {
    |           ^^^^^
 ...
 LL |         Either::One(_t)
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -217,7 +244,10 @@ LL |     match vr[0] {
    |           ^^^^^
 ...
 LL |         Either::One(_t) => (),
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -230,7 +260,8 @@ error[E0507]: cannot move out of index of `Vec<X>`
 LL |     let X(_t) = vsm[0];
    |           --    ^^^^^^
    |           |
-   |           data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |           data moved here
+   |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -243,7 +274,8 @@ error[E0507]: cannot move out of index of `Vec<Either>`
 LL |     if let Either::One(_t) = vrm[0] { }
    |                        --    ^^^^^^
    |                        |
-   |                        data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                        data moved here
+   |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -256,7 +288,8 @@ error[E0507]: cannot move out of index of `Vec<Either>`
 LL |     while let Either::One(_t) = vrm[0] { }
    |                           --    ^^^^^^
    |                           |
-   |                           data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                           data moved here
+   |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -270,7 +303,10 @@ LL |     match vrm[0] {
    |           ^^^^^^
 ...
 LL |         Either::One(_t)
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -284,7 +320,10 @@ LL |     match vrm[0] {
    |           ^^^^^^
 ...
 LL |         Either::One(_t) => (),
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -298,7 +337,10 @@ LL |     match vrm[0] {
    |           ^^^^^^
 ...
 LL |         Either::One(_t) => (),
-   |                     -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                     --
+   |                     |
+   |                     data moved here
+   |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider borrowing here
    |
@@ -311,7 +353,8 @@ error[E0507]: cannot move out of `s` which is behind a shared reference
 LL |     let &X(_t) = s;
    |            --    ^
    |            |
-   |            data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |            data moved here
+   |            move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -325,7 +368,8 @@ error[E0507]: cannot move out of `r` as enum variant `One` which is behind a sha
 LL |     if let &Either::One(_t) = r { }
    |                         --    ^
    |                         |
-   |                         data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         data moved here
+   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -339,7 +383,8 @@ error[E0507]: cannot move out of `r` as enum variant `One` which is behind a sha
 LL |     while let &Either::One(_t) = r { }
    |                            --    ^
    |                            |
-   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here
+   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -354,7 +399,10 @@ LL |     match r {
    |           ^
 LL |
 LL |         &Either::One(_t)
-   |                      -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                      --
+   |                      |
+   |                      data moved here
+   |                      move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -369,7 +417,10 @@ LL |     match r {
    |           ^
 LL |
 LL |         &Either::One(_t) => (),
-   |                      -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                      --
+   |                      |
+   |                      data moved here
+   |                      move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -384,7 +435,10 @@ LL |     match r {
    |           ^
 LL |
 LL |         &Either::One(_t) => (),
-   |                      -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                      --
+   |                      |
+   |                      data moved here
+   |                      move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -398,7 +452,8 @@ error[E0507]: cannot move out of `sm` which is behind a mutable reference
 LL |     let &mut X(_t) = sm;
    |                --    ^^
    |                |
-   |                data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |                data moved here
+   |                move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -412,7 +467,8 @@ error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mu
 LL |     if let &mut Either::One(_t) = rm { }
    |                             --    ^^
    |                             |
-   |                             data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                             data moved here
+   |                             move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -426,7 +482,8 @@ error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mu
 LL |     while let &mut Either::One(_t) = rm { }
    |                                --    ^^
    |                                |
-   |                                data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                                data moved here
+   |                                move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -465,7 +522,10 @@ LL |     match rm {
    |           ^^
 LL |
 LL |         &mut Either::One(_t) => (),
-   |                          -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          --
+   |                          |
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -480,7 +540,10 @@ LL |     match rm {
    |           ^^
 LL |
 LL |         &mut Either::One(_t) => (),
-   |                          -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          --
+   |                          |
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -495,7 +558,10 @@ LL |     match rm {
    |           ^^
 LL |
 LL |         &mut Either::One(_t) => (),
-   |                          -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          --
+   |                          |
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -509,7 +575,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     let (&X(_t),) = (&x.clone(),);
    |             --      ^^^^^^^^^^^^^
    |             |
-   |             data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |             data moved here
+   |             move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -523,7 +590,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     if let (&Either::One(_t),) = (&e.clone(),) { }
    |                          --      ^^^^^^^^^^^^^
    |                          |
-   |                          data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -537,7 +605,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     while let (&Either::One(_t),) = (&e.clone(),) { }
    |                             --      ^^^^^^^^^^^^^
    |                             |
-   |                             data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                             data moved here
+   |                             move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -552,7 +621,10 @@ LL |     match (&e.clone(),) {
    |           ^^^^^^^^^^^^^
 LL |
 LL |         (&Either::One(_t),)
-   |                       -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                       --
+   |                       |
+   |                       data moved here
+   |                       move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -566,7 +638,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     let (&mut X(_t),) = (&mut xm.clone(),);
    |                 --      ^^^^^^^^^^^^^^^^^^
    |                 |
-   |                 data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |                 data moved here
+   |                 move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -580,7 +653,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     if let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                              --      ^^^^^^^^^^^^^^^^^^
    |                              |
-   |                              data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                              data moved here
+   |                              move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -594,7 +668,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     while let (&mut Either::One(_t),) = (&mut em.clone(),) { }
    |                                 --      ^^^^^^^^^^^^^^^^^^
    |                                 |
-   |                                 data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                                 data moved here
+   |                                 move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -632,7 +707,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     let &X(_t) = &x;
    |            --    ^^
    |            |
-   |            data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |            data moved here
+   |            move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -646,7 +722,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     if let &Either::One(_t) = &e { }
    |                         --    ^^
    |                         |
-   |                         data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                         data moved here
+   |                         move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -660,7 +737,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     while let &Either::One(_t) = &e { }
    |                            --    ^^
    |                            |
-   |                            data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                            data moved here
+   |                            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -675,7 +753,10 @@ LL |     match &e {
    |           ^^
 LL |
 LL |         &Either::One(_t)
-   |                      -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                      --
+   |                      |
+   |                      data moved here
+   |                      move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -690,7 +771,10 @@ LL |     match &e {
    |           ^^
 LL |
 LL |         &Either::One(_t) => (),
-   |                      -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                      --
+   |                      |
+   |                      data moved here
+   |                      move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -705,7 +789,10 @@ LL |     match &e {
    |           ^^
 LL |
 LL |         &Either::One(_t) => (),
-   |                      -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                      --
+   |                      |
+   |                      data moved here
+   |                      move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -719,7 +806,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     let &mut X(_t) = &mut xm;
    |                --    ^^^^^^^
    |                |
-   |                data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |                data moved here
+   |                move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -733,7 +821,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     if let &mut Either::One(_t) = &mut em { }
    |                             --    ^^^^^^^
    |                             |
-   |                             data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                             data moved here
+   |                             move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -747,7 +836,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     while let &mut Either::One(_t) = &mut em { }
    |                                --    ^^^^^^^
    |                                |
-   |                                data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                                data moved here
+   |                                move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -762,7 +852,10 @@ LL |     match &mut em {
    |           ^^^^^^^
 LL |
 LL |         &mut Either::One(_t)
-   |                          -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          --
+   |                          |
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -777,7 +870,10 @@ LL |     match &mut em {
    |           ^^^^^^^
 LL |
 LL |         &mut Either::One(_t) => (),
-   |                          -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          --
+   |                          |
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -792,7 +888,10 @@ LL |     match &mut em {
    |           ^^^^^^^
 LL |
 LL |         &mut Either::One(_t) => (),
-   |                          -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          --
+   |                          |
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -807,7 +906,10 @@ LL |     match &mut em {
    |           ^^^^^^^
 LL |
 LL |         &mut Either::One(_t) => (),
-   |                          -- data moved here because `_t` has type `X`, which does not implement the `Copy` trait
+   |                          --
+   |                          |
+   |                          data moved here
+   |                          move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -821,7 +923,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     fn f1(&X(_t): &X) { }
    |           ^^^--^
    |              |
-   |              data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |              data moved here
+   |              move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -835,7 +938,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     fn f2(&mut X(_t): &mut X) { }
    |           ^^^^^^^--^
    |                  |
-   |                  data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |                  data moved here
+   |                  move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -849,7 +953,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     fn f3((&X(_t),): (&X,)) { }
    |           ^^^^--^^^
    |               |
-   |               data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |               data moved here
+   |               move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -863,7 +968,8 @@ error[E0507]: cannot move out of a mutable reference
 LL |     fn f4((&mut X(_t),): (&mut X,)) { }
    |           ^^^^^^^^--^^^
    |                   |
-   |                   data moved here because `_t` has type `Y`, which does not implement the `Copy` trait
+   |                   data moved here
+   |                   move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |
 help: consider removing the mutable borrow
    |
@@ -877,7 +983,8 @@ error[E0507]: cannot move out of `a.a` as enum variant `Some` which is behind a 
 LL |     let Some(_s) = a.a else {
    |              --    ^^^
    |              |
-   |              data moved here because `_s` has type `String`, which does not implement the `Copy` trait
+   |              data moved here
+   |              move occurs because `_s` has type `String`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

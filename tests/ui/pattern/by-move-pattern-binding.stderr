@@ -5,7 +5,10 @@ LL |     match &s.x {
    |           ^^^^
 LL |         &E::Foo => {}
 LL |         &E::Bar(identifier) => f(identifier.clone())
-   |                 ---------- data moved here because `identifier` has type `String`, which does not implement the `Copy` trait
+   |                 ----------
+   |                 |
+   |                 data moved here
+   |                 move occurs because `identifier` has type `String`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -19,7 +22,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     if let &E::Bar(identifier) = &s.x {
    |                    ----------    ^^^^
    |                    |
-   |                    data moved here because `identifier` has type `String`, which does not implement the `Copy` trait
+   |                    data moved here
+   |                    move occurs because `identifier` has type `String`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -33,7 +37,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     let &E::Bar(identifier) = &s.x else {
    |                 ----------    ^^^^
    |                 |
-   |                 data moved here because `identifier` has type `String`, which does not implement the `Copy` trait
+   |                 data moved here
+   |                 move occurs because `identifier` has type `String`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |

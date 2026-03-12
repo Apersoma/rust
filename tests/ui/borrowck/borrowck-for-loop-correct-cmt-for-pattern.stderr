@@ -4,7 +4,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     for &a in x.iter() {
    |          -    ^^^^^^^^
    |          |
-   |          data moved here because `a` has type `&mut i32`, which does not implement the `Copy` trait
+   |          data moved here
+   |          move occurs because `a` has type `&mut i32`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -18,7 +19,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     for &a in &f.a {
    |          -    ^^^^
    |          |
-   |          data moved here because `a` has type `Box<isize>`, which does not implement the `Copy` trait
+   |          data moved here
+   |          move occurs because `a` has type `Box<isize>`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |
@@ -32,7 +34,8 @@ error[E0507]: cannot move out of a shared reference
 LL |     for &a in x.iter() {
    |          -    ^^^^^^^^
    |          |
-   |          data moved here because `a` has type `Box<i32>`, which does not implement the `Copy` trait
+   |          data moved here
+   |          move occurs because `a` has type `Box<i32>`, which does not implement the `Copy` trait
    |
 help: consider removing the borrow
    |

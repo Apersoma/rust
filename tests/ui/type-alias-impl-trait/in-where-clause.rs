@@ -11,6 +11,7 @@ where
     Bar: Send,
 {
     [0; 1 + 2]
+    //~^ ERROR: type annotations needed: cannot satisfy `Bar: Send`
 }
 
 fn main() {}

@@ -109,21 +109,21 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
 /// ```rust
 /// struct S;
 /// #[rustfmt::skip]
-/// fn foo(p: bool) {                           // maybe-init:
-///                                             // {p}
-///     let a = S; let mut b = S; let c; let d; // {p, a, b}
+/// fn foo(pred: bool) {                        // maybe-init:
+///                                             // {}
+///     let a = S; let mut b = S; let c; let d; // {a, b}
 ///
-///     if p {
-///         drop(a);                            // {p,    b}
-///         b = S;                              // {p,    b}
+///     if pred {
+///         drop(a);                            // {   b}
+///         b = S;                              // {   b}
 ///
 ///     } else {
-///         drop(b);                            // {p, a}
-///         d = S;                              // {p, a,       d}
+///         drop(b);                            // {a}
+///         d = S;                              // {a,       d}
 ///
-///     }                                       // {p, a, b,    d}
+///     }                                       // {a, b,    d}
 ///
-///     c = S;                                  // {p, a, b, c, d}
+///     c = S;                                  // {a, b, c, d}
 /// }
 /// ```
 ///
@@ -199,11 +199,11 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 /// ```rust
 /// struct S;
 /// #[rustfmt::skip]
-/// fn foo(p: bool) {                           // maybe-uninit:
+/// fn foo(pred: bool) {                        // maybe-uninit:
 ///                                             // {a, b, c, d}
 ///     let a = S; let mut b = S; let c; let d; // {      c, d}
 ///
-///     if p {
+///     if pred {
 ///         drop(a);                            // {a,    c, d}
 ///         b = S;                              // {a,    c, d}
 ///
@@ -279,36 +279,34 @@ impl<'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     }
 }
 
-/// `EverInitializedPlaces` tracks all initializations that may have occurred
-/// upon reaching a particular point in the control flow for a function,
-/// without an intervening `StorageDead`.
+/// `EverInitializedPlaces` tracks all places that might have ever been
+/// initialized upon reaching a particular point in the control flow
+/// for a function, without an intervening `StorageDead`.
 ///
 /// This dataflow is used to determine if an immutable local variable may
 /// be assigned to.
 ///
 /// For example, in code like the following, we have corresponding
-/// dataflow information shown in the right-hand comments. Underscored indices
-/// are used to distinguish between multiple initializations of the same local
-/// variable, e.g. `b_0` and `b_1`.
+/// dataflow information shown in the right-hand comments.
 ///
 /// ```rust
 /// struct S;
 /// #[rustfmt::skip]
-/// fn foo(p: bool) {                           // ever-init:
-///                                             // {p,                  }
-///     let a = S; let mut b = S; let c; let d; // {p, a, b_0,          }
+/// fn foo(pred: bool) {                        // ever-init:
+///                                             // {          }
+///     let a = S; let mut b = S; let c; let d; // {a, b      }
 ///
-///     if p {
-///         drop(a);                            // {p, a, b_0,          }
-///         b = S;                              // {p, a, b_0, b_1,     }
+///     if pred {
+///         drop(a);                            // {a, b,     }
+///         b = S;                              // {a, b,     }
 ///
 ///     } else {
-///         drop(b);                            // {p, a, b_0, b_1,     }
-///         d = S;                              // {p, a, b_0, b_1,    d}
+///         drop(b);                            // {a, b,      }
+///         d = S;                              // {a, b,    d }
 ///
-///     }                                       // {p, a, b_0, b_1,    d}
+///     }                                       // {a, b,    d }
 ///
-///     c = S;                                  // {p, a, b_0, b_1, c, d}
+///     c = S;                                  // {a, b, c, d }
 /// }
 /// ```
 pub struct EverInitializedPlaces<'a, 'tcx> {
