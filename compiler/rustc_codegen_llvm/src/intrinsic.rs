@@ -3,7 +3,8 @@ use std::ffi::c_uint;
 use std::{assert_matches, ptr};
 
 use rustc_abi::{
-    Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
+    Align, BackendRepr, ExternAbi, Float, HasDataLayout, NumScalableVectors, Primitive, Size,
+    WrappingRange,
 };
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -106,11 +107,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fmuladdf32 => ("llvm.fmuladd", &[bx.type_f32()]),
         sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
         sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
-
-        sym::fabsf16 => ("llvm.fabs", &[bx.type_f16()]),
-        sym::fabsf32 => ("llvm.fabs", &[bx.type_f32()]),
-        sym::fabsf64 => ("llvm.fabs", &[bx.type_f64()]),
-        sym::fabsf128 => ("llvm.fabs", &[bx.type_f128()]),
 
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
@@ -502,6 +498,20 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
+            sym::fabs => {
+                let ty = args[0].layout.ty;
+                let ty::Float(f) = ty.kind() else {
+                    span_bug!(span, "the `fabs` intrinsic requires a floating-point argument, got {:?}", ty);
+                };
+                let llty = self.type_float_from_ty(*f);
+                let llvm_name = "llvm.fabs";
+                self.call_intrinsic(
+                    llvm_name,
+                    &[llty],
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+
             sym::raw_eq => {
                 use BackendRepr::*;
                 let tp_ty = fn_args.type_at(0);
@@ -594,6 +604,115 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let val = self.call_intrinsic("llvm.amdgcn.dispatch.ptr", &[], &[]);
                 // Relying on `LLVMBuildPointerCast` to produce an addrspacecast
                 self.pointercast(val, self.type_ptr())
+            }
+
+            sym::sve_tuple_create2 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                self.insert_value(ret, args[1].immediate(), 1)
+            }
+
+            sym::sve_tuple_create3 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(3),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                let ret = self.insert_value(ret, args[1].immediate(), 1);
+                self.insert_value(ret, args[2].immediate(), 2)
+            }
+
+            sym::sve_tuple_create4 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(4),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                let ret = self.insert_value(ret, args[1].immediate(), 1);
+                let ret = self.insert_value(ret, args[2].immediate(), 2);
+                self.insert_value(ret, args[3].immediate(), 3)
+            }
+
+            sym::sve_tuple_get => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        ..
+                    }
+                );
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(1)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                self.extract_value(
+                    args[0].immediate(),
+                    fn_args.const_at(2).to_leaf().to_i32() as u64,
+                )
+            }
+
+            sym::sve_tuple_set => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        ..
+                    }
+                );
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(1)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                self.insert_value(
+                    args[0].immediate(),
+                    args[1].immediate(),
+                    fn_args.const_at(2).to_leaf().to_i32() as u64,
+                )
             }
 
             _ if name.as_str().starts_with("simd_") => {
@@ -1528,6 +1647,23 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }};
     }
 
+    macro_rules! require_simd_or_scalable {
+        ($ty: expr, $variant:ident) => {{
+            require!(
+                $ty.is_simd() || $ty.is_scalable_vector(),
+                InvalidMonomorphization::$variant { span, name, ty: $ty }
+            );
+            if $ty.is_simd() {
+                let (len, ty) = $ty.simd_size_and_type(bx.tcx());
+                (len, ty, None)
+            } else {
+                let (count, ty, num_vecs) =
+                    $ty.scalable_vector_parts(bx.tcx()).expect("`is_scalable_vector` was wrong");
+                (count as u64, ty, Some(num_vecs))
+            }
+        }};
+    }
+
     /// Returns the bitwidth of the `$ty` argument if it is an `Int` or `Uint` type.
     macro_rules! require_int_or_uint_ty {
         ($ty: expr, $diag: expr) => {
@@ -1647,8 +1783,19 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(splat);
     }
 
-    // every intrinsic below takes a SIMD vector as its first argument
-    let (in_len, in_elem) = require_simd!(args[0].layout.ty, SimdInput);
+    let supports_scalable = match name {
+        sym::simd_cast | sym::simd_select => true,
+        _ => false,
+    };
+
+    // Every intrinsic below takes a SIMD vector as its first argument. Some intrinsics also accept
+    // scalable vectors. `require_simd_or_scalable` is used regardless as it'll do the right thing
+    // for non-scalable vectors, and an additional check to prohibit scalable vectors for those
+    // intrinsics that do not support them is added.
+    if !supports_scalable {
+        let _ = require_simd!(args[0].layout.ty, SimdInput);
+    }
+    let (in_len, in_elem, in_num_vecs) = require_simd_or_scalable!(args[0].layout.ty, SimdInput);
     let in_ty = args[0].layout.ty;
 
     let comparison = match name {
@@ -1837,7 +1984,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        let (v_len, _) = require_simd!(args[1].layout.ty, SimdArgument);
+        let (v_len, _, _) = require_simd_or_scalable!(args[1].layout.ty, SimdArgument);
         require!(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
@@ -1936,7 +2083,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
 
         let ty::Float(f) = in_elem.kind() else {
-            return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
+            return_error!(InvalidMonomorphization::BasicFloatType { span, name, ty: in_ty });
         };
         let elem_ty = bx.cx.type_float_from_ty(*f);
 
@@ -2641,7 +2788,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_cast || name == sym::simd_as {
-        let (out_len, out_elem) = require_simd!(ret_ty, SimdReturn);
+        let (out_len, out_elem, out_num_vecs) = require_simd_or_scalable!(ret_ty, SimdReturn);
         require!(
             in_len == out_len,
             InvalidMonomorphization::ReturnLengthInputType {
@@ -2653,7 +2800,19 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 out_len
             }
         );
-        // casting cares about nominal type, not just structural type
+        require!(
+            in_num_vecs == out_num_vecs,
+            InvalidMonomorphization::ReturnNumVecsInputType {
+                span,
+                name,
+                in_num_vecs: in_num_vecs.unwrap_or(NumScalableVectors(1)),
+                in_ty,
+                ret_ty,
+                out_num_vecs: out_num_vecs.unwrap_or(NumScalableVectors(1))
+            }
+        );
+
+        // Casting cares about nominal type, not just structural type
         if in_elem == out_elem {
             return Ok(args[0].immediate());
         }
@@ -2733,16 +2892,15 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     Ordering::Less => bx.fpext(args[0].immediate(), llret_ty),
                 });
             }
-            _ => { /* Unsupported. Fallthrough. */ }
+            _ => return_error!(InvalidMonomorphization::UnsupportedCast {
+                span,
+                name,
+                in_ty,
+                in_elem,
+                ret_ty,
+                out_elem
+            }),
         }
-        return_error!(InvalidMonomorphization::UnsupportedCast {
-            span,
-            name,
-            in_ty,
-            in_elem,
-            ret_ty,
-            out_elem
-        });
     }
     macro_rules! arith_binary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
@@ -2770,8 +2928,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_and: Uint, Int => and;
         simd_or: Uint, Int => or;
         simd_xor: Uint, Int => xor;
-        simd_fmax: Float => maxnum;
-        simd_fmin: Float => minnum;
+        simd_maximum_number_nsz: Float => maximum_number_nsz;
+        simd_minimum_number_nsz: Float => minimum_number_nsz;
 
     }
     macro_rules! arith_unary {

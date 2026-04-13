@@ -62,6 +62,7 @@ const GATED_CFGS: &[GatedCfg] = &[
         sym::cfg_target_has_reliable_f16_f128,
         Features::cfg_target_has_reliable_f16_f128,
     ),
+    (sym::target_object_format, sym::cfg_target_object_format, Features::cfg_target_object_format),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -773,7 +774,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         DuplicatesOk, EncodeCrossCrate::No, effective_target_features, experimental!(force_target_feature)
     ),
     gated!(
-        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
+        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kernel_hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
         EncodeCrossCrate::No, sanitize, experimental!(sanitize),
     ),
     gated!(
@@ -926,6 +927,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(
         unstable_feature_bound, Normal, template!(Word, List: &["feat1, feat2, ..."]),
         DuplicatesOk, EncodeCrossCrate::No,
+    ),
+    ungated!(
+        unstable_removed, CrateLevel,
+        template!(List: &[r#"feature = "name", reason = "...", link = "...", since = "version""#]),
+        DuplicatesOk, EncodeCrossCrate::Yes
     ),
     ungated!(
         rustc_const_unstable, Normal, template!(List: &[r#"feature = "name""#]),
@@ -1414,6 +1420,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_scalable_vector, Normal, template!(List: &["count"]), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_scalable_vector]` defines a scalable vector type"
     ),
+    rustc_attr!(
+        rustc_must_match_exhaustively, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
+        "enums with `#[rustc_must_match_exhaustively]` must be matched on with a match block that mentions all variants explicitly"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
@@ -1449,11 +1459,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_hidden_type_of_opaques, Normal, template!(Word),
+        TEST, rustc_dump_hidden_type_of_opaques, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_layout, Normal, template!(List: &["field1, field2, ..."]),
+        TEST, rustc_dump_layout, Normal, template!(List: &["field1, field2, ..."]),
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     rustc_attr!(
@@ -1504,11 +1514,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_symbol_name, Normal, template!(Word),
+        TEST, rustc_dump_symbol_name, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_def_path, Normal, template!(Word),
+        TEST, rustc_dump_def_path, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
@@ -1587,6 +1597,8 @@ pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool 
     match sym {
         sym::on_unimplemented | sym::do_not_recommend => true,
         sym::on_const => features.diagnostic_on_const(),
+        sym::on_move => features.diagnostic_on_move(),
+        sym::on_unknown => features.diagnostic_on_unknown(),
         _ => false,
     }
 }

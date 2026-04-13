@@ -63,7 +63,7 @@ pub trait MetaSized: PointeeSized {}
 pub trait Sized: MetaSized {}
 
 #[lang = "destruct"]
-#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
 pub trait Destruct: PointeeSized {}
 
 #[lang = "legacy_receiver"]
@@ -187,6 +187,12 @@ macro_rules! stringify {
     };
 }
 
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! compile_error {
+    ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+
 #[lang = "add"]
 pub trait Add<Rhs = Self> {
     type Output;
@@ -238,6 +244,8 @@ impl_marker_trait!(
 
 impl Sync for () {}
 
+impl<T, const N: usize> Sync for [T; N] {}
+
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
 
@@ -276,6 +284,10 @@ impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a
 trait Drop {
     fn drop(&mut self);
 }
+
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 pub mod mem {
     #[rustc_nounwind]

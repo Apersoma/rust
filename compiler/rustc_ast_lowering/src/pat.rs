@@ -133,8 +133,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
-                    PatKind::Guard(inner, cond) => {
-                        break hir::PatKind::Guard(self.lower_pat(inner), self.lower_expr(cond));
+                    PatKind::Guard(inner, guard) => {
+                        break hir::PatKind::Guard(
+                            self.lower_pat(inner),
+                            self.lower_expr(&guard.cond),
+                        );
                     }
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {
@@ -418,7 +421,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             }
             _ => {
                 let is_const_block = matches!(expr.kind, ExprKind::ConstBlock(_));
-                let pattern_from_macro = expr.is_approximately_pattern();
+                let pattern_from_macro = expr.is_approximately_pattern()
+                    || matches!(
+                        expr.peel_parens().kind,
+                        ExprKind::Binary(Spanned { node: BinOpKind::BitOr, .. }, ..)
+                    );
                 let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
                     span,
                     pattern_from_macro_note: pattern_from_macro,

@@ -727,7 +727,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     is_stub: false,
                 },
                 extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
-                stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
+                stable_crate_id: tcx.stable_crate_id(LOCAL_CRATE),
                 required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
                 panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
                 edition: tcx.sess.edition(),
@@ -943,6 +943,10 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::Macro(_)
         | DefKind::Field
         | DefKind::Impl { .. } => true,
+        // Encoding attrs for `Use` items allows `#[doc(hidden)]` on re-exports
+        // to be read cross-crate, which is needed for diagnostic path selection
+        // in `visible_parent_map`. See #153477.
+        DefKind::Use => true,
         // Tools may want to be able to detect their tool lints on
         // closures from upstream crates, too. This is used by
         // https://github.com/model-checking/kani and is not a performance
@@ -953,7 +957,6 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::ConstParam
         | DefKind::Ctor(..)
         | DefKind::ExternCrate
-        | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::AnonConst
         | DefKind::InlineConst
@@ -2474,8 +2477,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        path,
-        |tcx, path| {
+        || {
             with_encode_metadata_header(tcx, path, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.

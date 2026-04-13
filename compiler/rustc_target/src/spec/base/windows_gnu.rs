@@ -99,13 +99,14 @@ pub(crate) fn opts() -> TargetOptions {
         late_link_args_dynamic,
         late_link_args_static,
         abi_return_struct_as_int: true,
-        emit_debug_gdb_scripts: false,
+        emit_debug_gdb_scripts: true,
         requires_uwtable: true,
         eh_frame_header: false,
         debuginfo_kind: DebuginfoKind::Dwarf,
         // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
         // output DWO, despite using DWARF, doesn't use ELF..
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+        mcount: "_mcount".into(),
         ..Default::default()
     }
 }

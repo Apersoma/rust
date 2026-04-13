@@ -1660,14 +1660,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let element_ty = if !args.is_empty() {
-            // This shouldn't happen unless there's another error
-            // (e.g., never patterns in inappropriate contexts).
-            if self.diverges.get() != Diverges::Maybe {
-                self.dcx()
-                    .struct_span_err(expr.span, "unexpected divergence state in checking array")
-                    .delay_as_bug();
-            }
-
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| {
@@ -1879,7 +1871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !ocx.try_evaluate_obligations().is_empty() {
                     return Err(TypeError::Mismatch);
                 }
-                Ok(adt_ty)
+                Ok(self.resolve_vars_if_possible(adt_ty))
             })
             .ok()
         });
@@ -2453,25 +2445,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .partition(|field| field.2);
         err.span_labels(used_private_fields.iter().map(|(_, span, _)| *span), "private field");
-        if !remaining_private_fields.is_empty() {
-            let names = if remaining_private_fields.len() > 6 {
-                String::new()
-            } else {
-                format!(
-                    "{} ",
-                    listify(&remaining_private_fields, |(name, _, _)| format!("`{name}`"))
-                        .expect("expected at least one private field to report")
-                )
-            };
-            err.note(format!(
-                "{}private field{s} {names}that {were} not provided",
-                if used_fields.is_empty() { "" } else { "...and other " },
-                s = pluralize!(remaining_private_fields.len()),
-                were = pluralize!("was", remaining_private_fields.len()),
-            ));
-        }
 
         if let ty::Adt(def, _) = adt_ty.kind() {
+            if (def.did().is_local() || !used_fields.is_empty())
+                && !remaining_private_fields.is_empty()
+            {
+                let names = if remaining_private_fields.len() > 6 {
+                    String::new()
+                } else {
+                    format!(
+                        "{} ",
+                        listify(&remaining_private_fields, |(name, _, _)| format!("`{name}`"))
+                            .expect("expected at least one private field to report")
+                    )
+                };
+                err.note(format!(
+                    "{}private field{s} {names}that {were} not provided",
+                    if used_fields.is_empty() { "" } else { "...and other " },
+                    s = pluralize!(remaining_private_fields.len()),
+                    were = pluralize!("was", remaining_private_fields.len()),
+                ));
+            }
+
             let def_id = def.did();
             let mut items = self
                 .tcx
@@ -2992,7 +2987,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(ident.span, "unknown field");
                 self.point_at_param_definition(&mut err, param_ty);
             }
-            ty::Alias(ty::Opaque, _) => {
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 self.suggest_await_on_field_access(&mut err, ident, base, base_ty.peel_refs());
             }
             _ => {

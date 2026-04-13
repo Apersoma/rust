@@ -2,18 +2,20 @@ use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
-use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
+use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 
-use crate::dep_graph::{DepKind, DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
 use crate::query::on_disk_cache::OnDiskCache;
-use crate::query::{QueryCache, QueryJob, QueryStackFrame};
-use crate::ty::TyCtxt;
+use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
+use crate::ty::{self, TyCtxt};
 
 /// For a particular query, keeps track of "active" keys, i.e. keys whose
 /// evaluation has started but has not yet finished successfully.
@@ -47,12 +49,12 @@ pub enum ActiveKeyStatus<'tcx> {
 }
 
 #[derive(Debug)]
-pub struct CycleError<'tcx> {
+pub struct Cycle<'tcx> {
     /// The query and related span that uses the cycle.
     pub usage: Option<QueryStackFrame<'tcx>>,
 
     /// The span here corresponds to the reason for which this query was required.
-    pub cycle: Vec<QueryStackFrame<'tcx>>,
+    pub frames: Vec<QueryStackFrame<'tcx>>,
 }
 
 #[derive(Debug)]
@@ -77,8 +79,6 @@ pub enum EnsureMode {
 pub struct QueryVTable<'tcx, C: QueryCache> {
     pub name: &'static str,
 
-    /// True if this query has the `anon` modifier.
-    pub anon: bool,
     /// True if this query has the `eval_always` modifier.
     pub eval_always: bool,
     /// True if this query has the `depth_limit` modifier.
@@ -97,17 +97,13 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub will_cache_on_disk_for_key_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> bool,
+    pub will_cache_on_disk_for_key_fn: fn(key: C::Key) -> bool,
 
-    pub try_load_from_disk_fn: fn(
-        tcx: TyCtxt<'tcx>,
-        key: C::Key,
-        prev_index: SerializedDepNodeIndex,
-        index: DepNodeIndex,
-    ) -> Option<C::Value>,
-
-    pub is_loadable_from_disk_fn:
-        fn(tcx: TyCtxt<'tcx>, key: C::Key, index: SerializedDepNodeIndex) -> bool,
+    /// Function pointer that tries to load a query value from disk.
+    ///
+    /// This should only be called after a successful check of `will_cache_on_disk_for_key_fn`.
+    pub try_load_from_disk_fn:
+        fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<C::Value>,
 
     /// Function pointer that hashes this query's result values.
     ///
@@ -116,13 +112,10 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
 
     /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
     /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
-    /// error is created and emitted).
-    pub value_from_cycle_error: fn(
-        tcx: TyCtxt<'tcx>,
-        key: C::Key,
-        cycle_error: CycleError<'tcx>,
-        error: Diag<'_>,
-    ) -> C::Value,
+    /// error is created and emitted). A value may be returned, or (more commonly) the function may
+    /// just abort after emitting the error.
+    pub handle_cycle_error_fn:
+        fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>, error: Diag<'_>) -> C::Value,
 
     pub format_value: fn(&C::Value) -> String,
 
@@ -155,6 +148,13 @@ impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
 pub struct QuerySystem<'tcx> {
     pub arenas: WorkerLocal<QueryArenas<'tcx>>,
     pub query_vtables: QueryVTables<'tcx>,
+
+    /// Side-effect associated with each [`DepKind::SideEffect`] node in the
+    /// current incremental-compilation session. Side effects will be written
+    /// to disk, and loaded by [`OnDiskCache`] in the next session.
+    ///
+    /// Always empty if incremental compilation is off.
+    pub side_effects: Lock<FxIndexMap<DepNodeIndex, QuerySideEffect>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -200,7 +200,21 @@ pub struct TyCtxtEnsureDone<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
+impl<'tcx> TyCtxtEnsureOk<'tcx> {
+    pub fn typeck(self, def_id: impl IntoQueryKey<LocalDefId>) {
+        self.typeck_root(
+            self.tcx.typeck_root_def_id(def_id.into_query_key().to_def_id()).expect_local(),
+        )
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn typeck(self, def_id: impl IntoQueryKey<LocalDefId>) -> &'tcx ty::TypeckResults<'tcx> {
+        self.typeck_root(
+            self.typeck_root_def_id(def_id.into_query_key().to_def_id()).expect_local(),
+        )
+    }
+
     /// Returns a transparent wrapper for `TyCtxt` which uses
     /// `span` as the location of queries performed through it.
     #[inline(always)]
@@ -283,12 +297,14 @@ macro_rules! define_callbacks {
                 fn $name:ident($($K:tt)*) -> $V:ty
                 {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
-                    anon: $anon:literal,
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
                     depth_limit: $depth_limit:literal,
+                    desc: $desc:expr,
                     eval_always: $eval_always:literal,
                     feedable: $feedable:literal,
+                    handle_cycle_error: $handle_cycle_error:literal,
+                    no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,
                     separate_provide_extern: $separate_provide_extern:literal,
@@ -420,8 +436,7 @@ macro_rules! define_callbacks {
             pub fn description(&self, tcx: TyCtxt<'tcx>) -> String {
                 let (name, description) = ty::print::with_no_queries!(match self {
                     $(
-                        TaggedQueryKey::$name(key) =>
-                            (stringify!($name), _description_fns::$name(tcx, *key)),
+                        TaggedQueryKey::$name(key) => (stringify!($name), ($desc)(tcx, *key)),
                     )*
                 });
                 if tcx.sess.verbose_internals() {
@@ -445,30 +460,6 @@ macro_rules! define_callbacks {
                     $(
                         TaggedQueryKey::$name(key) =>
                             $crate::query::QueryKey::default_span(key, tcx),
-                    )*
-                }
-            }
-
-            pub fn def_kind(&self, tcx: TyCtxt<'tcx>) -> Option<DefKind> {
-                // This is used to reduce code generation as it
-                // can be reused for queries with the same key type.
-                fn inner<'tcx>(key: &impl $crate::query::QueryKey, tcx: TyCtxt<'tcx>)
-                    -> Option<DefKind>
-                {
-                    key
-                        .key_as_def_id()
-                        .and_then(|def_id| def_id.as_local())
-                        .map(|def_id| tcx.def_kind(def_id))
-                }
-
-                if let TaggedQueryKey::def_kind(..) = self {
-                    // Try to avoid infinite recursion.
-                    return None
-                }
-
-                match self {
-                    $(
-                        TaggedQueryKey::$name(key) => inner(key, tcx),
                     )*
                 }
             }

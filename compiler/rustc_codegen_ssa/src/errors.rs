@@ -6,6 +6,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
+use rustc_abi::NumScalableVectors;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, IntoDiagArg,
@@ -733,14 +734,6 @@ pub enum InvalidMonomorphization<'tcx> {
         in_ty: Ty<'tcx>,
     },
 
-    #[diag("invalid monomorphization of `{$name}` intrinsic: `{$in_ty}` is not a floating-point type", code = E0511)]
-    FloatingPointType {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        in_ty: Ty<'tcx>,
-    },
-
     #[diag("invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`", code = E0511)]
     UnrecognizedIntrinsic {
         #[primary_span]
@@ -815,6 +808,17 @@ pub enum InvalidMonomorphization<'tcx> {
         in_ty: Ty<'tcx>,
         ret_ty: Ty<'tcx>,
         out_len: u64,
+    },
+
+    #[diag("invalid monomorphization of `{$name}` intrinsic: expected return type with {$in_num_vecs} vectors (same as input type `{$in_ty}`), found `{$ret_ty}` with length {$out_num_vecs}", code = E0511)]
+    ReturnNumVecsInputType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        in_num_vecs: NumScalableVectors,
+        in_ty: Ty<'tcx>,
+        ret_ty: Ty<'tcx>,
+        out_num_vecs: NumScalableVectors,
     },
 
     #[diag("invalid monomorphization of `{$name}` intrinsic: expected second argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}", code = E0511)]

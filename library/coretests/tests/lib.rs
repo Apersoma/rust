@@ -8,15 +8,18 @@
 #![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
 #![feature(bool_to_result)]
+#![feature(borrowed_buf_init)]
 #![feature(bstr)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
+#![feature(cmp_minmax)]
 #![feature(const_array)]
 #![feature(const_bool)]
 #![feature(const_cell_traits)]
 #![feature(const_clone)]
+#![feature(const_closures)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
 #![feature(const_default)]
@@ -67,7 +70,6 @@
 #![feature(int_roundings)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
-#![feature(isolate_most_least_significant_one)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_collect_into)]
@@ -84,7 +86,6 @@
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(new_range_api)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(nonzero_from_str_radix)]
@@ -112,6 +113,7 @@
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(strict_provenance_lints)]
+#![feature(titlecase)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_blocks)]
@@ -182,7 +184,6 @@ mod cmp;
 mod const_ptr;
 mod convert;
 mod ffi;
-mod floats;
 mod fmt;
 mod future;
 mod hash;
