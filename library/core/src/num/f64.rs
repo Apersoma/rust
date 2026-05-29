@@ -591,7 +591,7 @@ impl f64 {
     /// assert_eq!(f64::from_bits(a_bits ^ sign_mask), -a);
     /// assert_eq!(sign_mask, (-0.0f64).to_bits());
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
 
     /// The mask of the bits used to encode the exponent of an [`f64`].
@@ -611,7 +611,7 @@ impl f64 {
     /// assert_eq!(get_exp(2.0), 1);
     /// assert_eq!(get_exp(4.0), 2);
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const EXPONENT_MASK: u64 = 0x7ff0_0000_0000_0000;
 
     /// The mask of the bits used to encode the mantissa of an [`f64`].
@@ -633,7 +633,7 @@ impl f64 {
     /// assert_eq!(f64::MAX.to_bits() & f64::MANTISSA_MASK, f64::MANTISSA_MASK);
     /// assert_eq!(f64::MIN.to_bits() & f64::MANTISSA_MASK, f64::MANTISSA_MASK);
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const MANTISSA_MASK: u64 = 0x000f_ffff_ffff_ffff;
 
     /// Minimum representable positive value (min subnormal)

@@ -362,7 +362,7 @@ impl f128 {
     /// assert_eq!(sign_mask, (-0.0f128).to_bits());
     /// # }
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const SIGN_MASK: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
 
     /// The mask of the bits used to encode the exponent of an [`f128`].
@@ -385,7 +385,7 @@ impl f128 {
     /// assert_eq!(get_exp(4.0), 2);
     /// # }
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const EXPONENT_MASK: u128 = 0x7fff_0000_0000_0000_0000_0000_0000_0000;
 
     /// The mask of the bits used to encode the mantissa of an [`f128`].
@@ -410,7 +410,7 @@ impl f128 {
     /// assert_eq!(f128::MIN.to_bits() & f128::MANTISSA_MASK, f128::MANTISSA_MASK);
     /// # }
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const MANTISSA_MASK: u128 = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff;
 
     /// Minimum representable positive value (min subnormal)

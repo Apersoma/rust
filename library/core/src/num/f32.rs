@@ -592,7 +592,7 @@ impl f32 {
     /// assert_eq!(f32::from_bits(a_bits ^ sign_mask), -a);
     /// assert_eq!(sign_mask, (-0.0f32).to_bits());
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const SIGN_MASK: u32 = 0x8000_0000;
 
     /// The mask of the bits used to encode the exponent of an [`f32`].
@@ -612,7 +612,7 @@ impl f32 {
     /// assert_eq!(get_exp(2.0), 1);
     /// assert_eq!(get_exp(4.0), 2);
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const EXPONENT_MASK: u32 = 0x7f80_0000;
 
     /// The mask of the bits used to encode the mantissa of an [`f32`].
@@ -634,7 +634,7 @@ impl f32 {
     /// assert_eq!(f32::MAX.to_bits() & f32::MANTISSA_MASK, f32::MANTISSA_MASK);
     /// assert_eq!(f32::MIN.to_bits() & f32::MANTISSA_MASK, f32::MANTISSA_MASK);
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const MANTISSA_MASK: u32 = 0x007f_ffff;
 
     /// Minimum representable positive value (min subnormal)

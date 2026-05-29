@@ -356,7 +356,7 @@ impl f16 {
     /// assert_eq!(sign_mask, (-0.0f16).to_bits());
     /// # }
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const SIGN_MASK: u16 = 0x8000;
 
     /// The mask of the bits used to encode the exponent of an [`f16`].
@@ -381,7 +381,7 @@ impl f16 {
     /// assert_eq!(get_exp(4.0), 2);
     /// # }
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const EXPONENT_MASK: u16 = 0x7c00;
 
     /// The mask of the bits used to encode the mantissa of an [`f16`].
@@ -406,7 +406,7 @@ impl f16 {
     /// assert_eq!(f16::MIN.to_bits() & f16::MANTISSA_MASK, f16::MANTISSA_MASK);
     /// # }
     /// ```
-    #[unstable(feature = "float_masks", issue = "154064")]
+    #[stable(feature = "float_masks", since = "CURRENT_RUSTC_VERSION")]
     pub const MANTISSA_MASK: u16 = 0x03ff;
 
     /// Minimum representable positive value (min subnormal)
